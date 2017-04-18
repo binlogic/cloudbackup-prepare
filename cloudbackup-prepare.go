@@ -66,10 +66,15 @@ func validateInputFile(filename string) {
 		log.Fatal("Input file is mandatory.")
 	}
 
-	if _, err := os.Stat(filename); err != nil {
+	finfo, err := os.Stat(filename)
+	if err != nil {
 		if os.IsNotExist(err) {
 			log.Fatal("Input file doesn't exists!.")
 		}
+	}
+
+	if finfo.IsDir() {
+		log.Fatalf("Expecting a file but %s is a directory.", filename)
 	}
 	log.Debugf("File: %s exists.", filename)
 }
