@@ -1,6 +1,10 @@
 package main
 
 import (
+	"compress/zlib"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
@@ -9,13 +13,13 @@ import (
 )
 
 var (
-	log          = logrus.New()
-	logLevel     bool
-	version      string
-	showVersion  bool
-	agentVersion string
-	inputFile    string
-	outputDir    string
+	log           = logrus.New()
+	logLevel      bool
+	version       string
+	showVersion   bool
+	agentVersion  string
+	inputFile     string
+	encryptionKey string
 )
 
 func setupLogger(logger *logrus.Logger, verbose bool) {
@@ -24,7 +28,7 @@ func setupLogger(logger *logrus.Logger, verbose bool) {
 	formatter.TimestampFormat = "2006-01-02 15:04:05"
 	formatter.ForceColors = true
 	logger.Formatter = formatter
-	logger.Out = os.Stdout
+	logger.Out = os.Stderr
 
 	if verbose {
 		logger.Level = logrus.DebugLevel
@@ -38,7 +42,7 @@ func main() {
 	flag.BoolVarP(&showVersion, "version", "v", false, "Output version information and exit")
 	flag.StringVarP(&agentVersion, "agent-version", "a", "", "Binlogic CloudBackup agent version used to take backup")
 	flag.StringVarP(&inputFile, "backup-file", "i", "", "Binlogic CloudBackup file path")
-	flag.StringVarP(&outputDir, "output-dir", "o", "", "Output directory to place backup files.")
+	flag.StringVarP(&encryptionKey, "encryption-key", "e", "", "Encruption key to decrypt backup file")
 	flag.BoolVarP(&logLevel, "debug", "d", false, "Debug mode")
 	flag.Parse()
 
@@ -51,10 +55,10 @@ func main() {
 
 	log.Debugf("Agent Version: %s", agentVersion)
 	log.Debugf("Backup File: %s", inputFile)
-	log.Debugf("Output Directory: %s", outputDir)
 
 	validateInputFile(inputFile)
-	validateOutputDir(outputDir)
+
+	prepareBackupFile(inputFile, encryptionKey)
 
 	os.Exit(0)
 
@@ -104,4 +108,66 @@ func isEmptyDir(path string) {
 		return
 	}
 	log.Fatalf("Output directory %s should be empty!", path)
+}
+
+func getCipherStream(key string) (cipher.Stream, error) {
+	keyBytes, err := base64.URLEncoding.DecodeString(key)
+
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(keyBytes)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// If the key is unique for each ciphertext, then it's ok to use a zero IV.
+	// TODO: an iv that is predictable is safer in this case ?
+	var iv [aes.BlockSize]byte
+
+	return cipher.NewOFB(block, iv[:]), nil
+}
+
+func getCipherReader(key string, wrappedReader io.Reader) (io.Reader, error) {
+	if key == "" {
+		return wrappedReader, nil
+	}
+
+	stream, err := getCipherStream(key)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &cipher.StreamReader{S: stream, R: wrappedReader}, nil
+}
+
+func prepareBackupFile(filename, encryptionKey string) {
+
+	if encryptionKey == "" {
+		log.Fatal("Encryption key is mandatory.")
+	}
+
+	f, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("Fail to opening %s: %s", filename, err)
+	}
+	defer f.Close()
+
+	zipReader, zerr := zlib.NewReader(f)
+	if zerr != nil {
+		log.Fatalf("%s opening zlib reader", zerr)
+	}
+
+	cipherReader, cerr := getCipherReader(encryptionKey, zipReader)
+	if cerr != nil {
+		log.Fatalf("Fail to decrypt file %s using %s: %s", filename, encryptionKey, zerr)
+	}
+
+	_, ferr := io.Copy(os.Stdout, cipherReader)
+	if cerr != nil {
+		log.Fatalf("Fail while preparing backup file: %s", ferr)
+	}
 }
