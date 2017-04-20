@@ -9,9 +9,6 @@ go:
 install:
   - go get github.com/spf13/pflag
 
-install: true
-
 gobuild_args: -x -ldflags "-X main.version v1.0.0"
 
-script:
-  - go test .
+script: go test -v ./...
