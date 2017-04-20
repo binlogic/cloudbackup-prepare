@@ -11,4 +11,4 @@ install:
 
 gobuild_args: -x -ldflags "-X main.version v1.0.0"
 
-script: go test -v ./...
+script: go test -v .
