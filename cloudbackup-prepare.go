@@ -6,9 +6,10 @@ import (
 	"crypto/cipher"
 	"encoding/base64"
 	"fmt"
-	flag "github.com/spf13/pflag"
 	"io"
 	"os"
+
+	flag "github.com/spf13/pflag"
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 	encryptionKey string
 )
 
-func showError(message string) {
+func showError(message error) {
 	fmt.Fprintf(os.Stderr, "%s\n", message)
 	os.Exit(0)
 }
@@ -40,7 +41,7 @@ func main() {
 
 	err := prepareBackupFile(inputFile, encryptionKey, outputFile)
 	if err != nil {
-		showError(fmt.Sprintf("%s", err))
+		showError(err)
 	}
 
 	fmt.Fprintf(os.Stderr, "Process completed succesfully\n")
