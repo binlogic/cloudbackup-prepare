@@ -6,57 +6,74 @@ import (
 	"crypto/cipher"
 	"encoding/base64"
 	"fmt"
-	"io"
-	"os"
-
 	flag "github.com/spf13/pflag"
+	"io"
+
+	"os"
 )
 
 var (
 	version       string
 	showVersion   bool
-	agentVersion  string
 	inputFile     string
 	outputFile    string
 	encryptionKey string
 )
 
+func init() {
+	flag.BoolVarP(&showVersion, "version", "v", false, "Output version information and exit")
+	flag.StringVarP(&inputFile, "backup-file", "i", "", "Binlogic CloudBackup file path")
+	flag.StringVarP(&outputFile, "output-file", "o", "", "Outfile to save backup decrypted and uncompressed")
+	flag.StringVarP(&encryptionKey, "encryption-key", "e", "", "Encruption key to decrypt backup file")
+}
+
 func showError(message error) {
 	fmt.Fprintf(os.Stderr, "%s\n", message)
 	os.Exit(0)
 }
-
-func main() {
-	flag.BoolVarP(&showVersion, "version", "v", false, "Output version information and exit")
-	flag.StringVarP(&agentVersion, "agent-version", "a", "", "Binlogic CloudBackup agent version used to take backup")
-	flag.StringVarP(&inputFile, "backup-file", "i", "", "Binlogic CloudBackup file path")
-	flag.StringVarP(&outputFile, "output-file", "o", "", "Outfile to save backup decrypted and uncompressed")
-	flag.StringVarP(&encryptionKey, "encryption-key", "e", "", "Encruption key to decrypt backup file")
-	flag.Parse()
+func parseArgs(args []string) error {
+	flag.CommandLine.Parse(args[1:])
 
 	if showVersion {
 		fmt.Println(version)
 		os.Exit(0)
 	}
 
-	err := prepareBackupFile(inputFile, encryptionKey, outputFile)
+	if len(inputFile) == 0 {
+		return fmt.Errorf("Backup file is mandatory")
+	}
+
+	if len(outputFile) == 0 {
+		return fmt.Errorf("Output file is mandatory")
+	}
+
+	if len(encryptionKey) == 0 {
+		return fmt.Errorf("Encryption key is mandatory")
+	}
+
+	return nil
+}
+
+func main() {
+	err := parseArgs(os.Args)
 	if err != nil {
 		showError(err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Process completed succesfully\n")
+	err = prepareBackupFile(inputFile, encryptionKey, outputFile)
+	if err != nil {
+		showError(err)
+	}
+
+	fmt.Println("Process completed successfully")
 	os.Exit(0)
 }
 
 func validateInputFile(filename string) error {
-	if len(filename) == 0 {
-		return fmt.Errorf("Input file is mandatory")
-	}
-
 	finfo, err := os.Stat(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("Input file doesn't exists")
+			return fmt.Errorf("Backup file doesn't exists")
 		}
 	}
 
@@ -68,10 +85,6 @@ func validateInputFile(filename string) error {
 }
 
 func validateOutputFile(filename string) error {
-	if len(filename) == 0 {
-		return fmt.Errorf("Output file is mandatory")
-	}
-
 	_, err := os.Stat(filename)
 	if err == nil {
 		return fmt.Errorf("Output file exists %s. Please remove it", filename)
@@ -110,10 +123,6 @@ func getCipherReader(key string, wrappedReader io.Reader) (io.Reader, error) {
 }
 
 func prepareBackupFile(filename, encryptionKey, output string) error {
-	if encryptionKey == "" {
-		return fmt.Errorf("Encryption key is mandatory")
-	}
-
 	err := validateInputFile(filename)
 	if err != nil {
 		return fmt.Errorf("%s", err)
@@ -137,7 +146,7 @@ func prepareBackupFile(filename, encryptionKey, output string) error {
 
 	cipherReader, err := getCipherReader(encryptionKey, zipReader)
 	if err != nil {
-		return fmt.Errorf("Fail to decrypt file %s using %s: %s", filename, encryptionKey, err)
+		return fmt.Errorf("Fail to decrypt file %s using %s. Be sure encryption key is correct", filename, encryptionKey)
 	}
 
 	of, err := os.Create(output)
