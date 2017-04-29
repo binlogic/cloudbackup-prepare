@@ -1,10 +1,6 @@
-hash: c6063f0d956569357f59d0895b6035f389eddcad1f1dce09b9f58f14c88529d1
-updated: 2017-04-14T10:37:06.58480061-03:00
+hash: 3bb278be33bf95235aae0f21ac5b07c4da44d339e431c1c2331b3663b624fc8b
+updated: 2017-04-29T15:09:51.597075872-03:00
 imports:
 - name: github.com/spf13/pflag
   version: d16db1e50e33dff1b6cdf37596cef36742128670
-- name: golang.org/x/sys
-  version: 9a7256cb28ed514b4e1e5f68959914c4c28a92e0
-  subpackages:
-  - unix
 testImports: []
