@@ -36,6 +36,9 @@ Usage of loudbackup-prepare:
 cloudbackup-prepare  -i tesfiles/mysqldump_sql.z  -e kpySdc2vfHL_4WebUstA29fRFacKis8LZRbLqFFY0HM= -o somefile.sql
 ```
 
+`NOTE:` Since we cant validate  encryption key is valid to decrypt each file (otherwise you backup is not safe :( ), we only check key has a valid format. After process is complete, please check that the output file doesn't contain garbage. In that case
+you are probably using an incorrect key.
+
 where `tesfiles/mysqldump_sql.z` is the backup file, `kpySdc2vfHL_4WebUstA29fRFacKis8LZRbLqFFY0HM=` is the key used to encrypt this backup and `somefile.sql` is where you want to dump decreypted and uncompress backup. Problably is you are
 processing a MongoDB backup you want to use `somefile.json` or if you are processing a xtrabackup file like `somefile.xbstream` but that is up to you.
 
