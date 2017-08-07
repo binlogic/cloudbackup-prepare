@@ -12,6 +12,8 @@ before_install:
 
 install:
   - go get github.com/spf13/pflag
+  - go get github.com/golang/snappy
+  - go get github.com/hashicorp/go-version
 
 script:
   - go test -v -covermode=count -coverprofile=coverage.out

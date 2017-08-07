@@ -175,7 +175,7 @@ func Test_prepareBackupFile(t *testing.T) {
 				encryptionKey: `InvalidKeyTest`,
 				output:        `/tmp/backup_dir.sql`,
 			},
-			expect: fmt.Errorf("Fail opening zlib reader: unexpected EOF"),
+			expect: fmt.Errorf("Fail opening zlib reader: unexpected EOF. Check the agent version you took the backup with"),
 		},
 		{
 			name: "Incorrect output file",

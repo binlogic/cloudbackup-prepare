@@ -6,9 +6,10 @@ import (
 	"crypto/cipher"
 	"encoding/base64"
 	"fmt"
+	"github.com/golang/snappy"
+	goversion "github.com/hashicorp/go-version"
 	flag "github.com/spf13/pflag"
 	"io"
-
 	"os"
 )
 
@@ -18,19 +19,22 @@ var (
 	inputFile     string
 	outputFile    string
 	encryptionKey string
+	agentVersion  string
 )
 
 func init() {
 	flag.BoolVarP(&showVersion, "version", "v", false, "Output version information and exit")
 	flag.StringVarP(&inputFile, "backup-file", "i", "", "Binlogic CloudBackup file path")
 	flag.StringVarP(&outputFile, "output-file", "o", "", "Outfile to save backup decrypted and uncompressed")
-	flag.StringVarP(&encryptionKey, "encryption-key", "e", "", "Encruption key to decrypt backup file")
+	flag.StringVarP(&encryptionKey, "encryption-key", "e", "", "Encryption key to decrypt backup file")
+	flag.StringVarP(&agentVersion, "agent-version", "", "", "Agent version used to take the backup (if empty it's assumed <= 1.2.0)")
 }
 
 func showError(message error) {
 	fmt.Fprintf(os.Stderr, "%s\n", message)
 	os.Exit(0)
 }
+
 func parseArgs(args []string) error {
 	flag.CommandLine.Parse(args[1:])
 
@@ -139,14 +143,33 @@ func prepareBackupFile(filename, encryptionKey, output string) error {
 	}
 	defer f.Close()
 
-	zipReader, err := zlib.NewReader(f)
+	is120OrLess, err := versionConstraint(agentVersion, "<= 1.2.0")
+
 	if err != nil {
-		return fmt.Errorf("Fail opening zlib reader: %s", err)
+		return fmt.Errorf("%s creating version constraint", err)
 	}
 
-	cipherReader, err := getCipherReader(encryptionKey, zipReader)
-	if err != nil {
-		return fmt.Errorf("Fail to decrypt file %s using %s. Be sure encryption key is correct", filename, encryptionKey)
+	var reader io.Reader
+
+	if agentVersion == "" || is120OrLess {
+		zipReader, err := zlib.NewReader(f)
+		if err != nil {
+			return fmt.Errorf("Fail opening zlib reader: %s. Check the agent version you took the backup with", err)
+		}
+
+		reader, err = getCipherReader(encryptionKey, zipReader)
+		if err != nil {
+			return fmt.Errorf("Fail to decrypt file %s using %s. Be sure encryption key is correct",
+				filename, encryptionKey)
+		}
+	} else {
+		cipherReader, err := getCipherReader(encryptionKey, f)
+
+		if err != nil {
+			return fmt.Errorf("%s while creating encrypted stream", err)
+		}
+
+		reader = snappy.NewReader(cipherReader)
 	}
 
 	of, err := os.Create(output)
@@ -155,10 +178,28 @@ func prepareBackupFile(filename, encryptionKey, output string) error {
 	}
 	defer of.Close()
 
-	_, err = io.Copy(of, cipherReader)
+	_, err = io.Copy(of, reader)
 	if err != nil {
 		return fmt.Errorf("Fail while preparing backup file: %s", err)
 	}
 
 	return nil
+}
+
+func versionConstraint(ver, constraint string) (bool, error) {
+	if ver == "0.0.0" || ver == "develop" || ver == "" {
+		return false, nil
+	}
+
+	agentV, err := goversion.NewVersion(ver)
+
+	if err != nil {
+		return false, err
+	}
+
+	if c, err := goversion.NewConstraint(constraint); err != nil {
+		return false, err
+	} else {
+		return c.Check(agentV), nil
+	}
 }

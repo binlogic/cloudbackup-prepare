@@ -1,6 +1,10 @@
-hash: 3bb278be33bf95235aae0f21ac5b07c4da44d339e431c1c2331b3663b624fc8b
-updated: 2017-04-29T15:09:51.597075872-03:00
+hash: 64dd5a6ddcefbae173a3ef87ff510826dd4454b7fad4c296b01dd95d2829f5c6
+updated: 2017-08-04T13:32:59.559880378-03:00
 imports:
+- name: github.com/golang/snappy
+  version: 553a641470496b2327abcac10b36396bd98e45c9
+- name: github.com/hashicorp/go-version
+  version: 03c5bf6be031b6dd45afec16b1cf94fc8938bc77
 - name: github.com/spf13/pflag
   version: d16db1e50e33dff1b6cdf37596cef36742128670
 testImports: []
