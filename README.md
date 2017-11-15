@@ -22,8 +22,9 @@ getting the backup ready yo use.
 ## Usage
 
 ```console
-Usage of loudbackup-prepare:
+Usage of cloudbackup-prepare:
 
+      --agent-version string    Agent version used to take the backup (if empty it's assumed <= 1.2.0)
   -i, --backup-file string      Binlogic CloudBackup file path
   -e, --encryption-key string   Encruption key to decrypt backup file
   -o, --output-file string      Outfile to save backup decrypted and uncompressed
