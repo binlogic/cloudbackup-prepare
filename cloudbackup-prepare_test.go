@@ -175,7 +175,7 @@ func Test_prepareBackupFile(t *testing.T) {
 				encryptionKey: `InvalidKeyTest`,
 				output:        `/tmp/backup_dir.sql`,
 			},
-			expect: fmt.Errorf("Fail opening zlib reader: unexpected EOF. Check the agent version you took the backup with"),
+			expect: fmt.Errorf("Fail opening zlib reader: unexpected EOF. Check the agent version you took the backup with and pass it with the --agent-version option"),
 		},
 		{
 			name: "Incorrect output file",
@@ -184,14 +184,14 @@ func Test_prepareBackupFile(t *testing.T) {
 				encryptionKey: `kpySdc2vfHL_4WebUstA29fRFacKis8LZRbLqFFY0HM=`,
 				output:        `/missing/dir/file.sql`,
 			},
-			expect: fmt.Errorf("Fail to create /missing/dir/file.sql: open /missing/dir/file.sql: no such file or directory"),
+			expect: fmt.Errorf("Failed to create /missing/dir/file.sql: open /missing/dir/file.sql: no such file or directory"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := prepareBackupFile(tt.args.filename, tt.args.encryptionKey, tt.args.output)
 			if !reflect.DeepEqual(result, tt.expect) {
-				t.Errorf("Expecting %s got %s", tt.expect, result)
+				t.Errorf("Expecting '%s' got '%s'", tt.expect, result)
 			}
 		})
 	}
